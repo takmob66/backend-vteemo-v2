@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VTEEMO - تست اتصال Frontend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success {
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left: 4px solid #f44336;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .auth-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .auth-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 VTEEMO Frontend Test</h1>
+        <p style="text-align: center;">تست اتصال Frontend به Backend</p>
+
+        <!-- Backend Status Test -->
+        <div class="test-section">
+            <h3>1️⃣ تست وضعیت Backend</h3>
+            <button onclick="testBackendHealth()">بررسی سلامت Backend</button>
+            <button onclick="testAPIStatus()">بررسی وضعیت API</button>
+            <div id="healthResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Authentication Test -->
+        <div class="test-section">
+            <h3>2️⃣ تست احراز هویت</h3>
+            <div class="auth-section">
+                <!-- Register -->
+                <div>
+                    <h4>ثبت نام</h4>
+                    <div class="input-group">
+                        <input type="text" id="regName" placeholder="نام کاربری">
+                        <input type="email" id="regEmail" placeholder="ایمیل">
+                        <input type="password" id="regPassword" placeholder="رمز عبور">
+                        <button onclick="testRegister()">ثبت نام</button>
+                    </div>
+                </div>
+
+                <!-- Login -->
+                <div>
+                    <h4>ورود</h4>
+                    <div class="input-group">
+                        <input type="email" id="loginEmail" placeholder="ایمیل">
+                        <input type="password" id="loginPassword" placeholder="رمز عبور">
+                        <button onclick="testLogin()">ورود</button>
+                        <button onclick="testGetProfile()">مشاهده پروفایل</button>
+                    </div>
+                </div>
+            </div>
+            <div id="authResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Videos Test -->
+        <div class="test-section">
+            <h3>3️⃣ تست ویدیوها</h3>
+            <div class="input-group">
+                <input type="text" id="videoTitle" placeholder="عنوان ویدیو">
+                <textarea id="videoDescription" placeholder="توضیحات ویدیو" rows="3"></textarea>
+                <input type="url" id="videoUrl" placeholder="لینک ویدیو">
+                <button onclick="testCreateVideo()">ایجاد ویدیو</button>
+                <button onclick="testGetVideos()">مشاهده لیست ویدیوها</button>
+            </div>
+            <div id="videoResult" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Token Display -->
+        <div class="test-section">
+            <h3>4️⃣ مدیریت Token</h3>
+            <button onclick="showToken()">نمایش Token</button>
+            <button onclick="clearToken()">پاک کردن Token</button>
+            <div id="tokenResult" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Backend URL
+        const API_BASE = 'https://vteemo-backend.liara.run/api';
+        const BACKEND_BASE = 'https://vteemo-backend.liara.run';
+
+        // Helper function for API calls
+        async function apiCall(endpoint, options = {}) {
+            const token = localStorage.getItem('vteemo_token');
+            
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                    ...options.headers,
+                },
+                ...options,
+            };
+
+            if (config.body && typeof config.body === 'object') {
+                config.body = JSON.stringify(config.body);
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, config);
+                const data = await response.json();
+                
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    data: data
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        // Display result helper
+        function showResult(elementId, result, success = true) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `result ${success ? 'success' : 'error'}`;
+            element.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+        }
+
+        // 1. Backend Health Tests
+        async function testBackendHealth() {
+            try {
+                const response = await fetch(`${BACKEND_BASE}/health`);
+                const data = await response.json();
+                showResult('healthResult', {
+                    success: true,
+                    message: 'Backend سالم است! ✅',
+                    data: data
+                });
+            } catch (error) {
+                showResult('healthResult', {
+                    success: false,
+                    error: error.message
+                }, false);
+            }
+        }
+
+        async function testAPIStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/status`);
+                const data = await response.json();
+                showResult('healthResult', {
+                    success: true,
+                    message: 'API فعال است! ✅',
+                    data: data
+                });
+            } catch (error) {
+                showResult('healthResult', {
+                    success: false,
+                    error: error.message
+                }, false);
+            }
+        }
+
+        // 2. Authentication Tests
+        async function testRegister() {
+            const name = document.getElementById('regName').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+
+            if (!name || !email || !password) {
+                showResult('authResult', { error: 'لطفا همه فیلدها را پر کنید' }, false);
+                return;
+            }
+
+            const result = await apiCall('/auth/register', {
+                method: 'POST',
+                body: { name, email, password }
+            });
+
+            if (result.success && result.data.token) {
+                localStorage.setItem('vteemo_token', result.data.token);
+                showResult('authResult', {
+                    message: 'ثبت نام موفق! Token ذخیره شد ✅',
+                    user: result.data.user
+                });
+            } else {
+                showResult('authResult', result, false);
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showResult('authResult', { error: 'لطفا ایمیل و رمز عبور را وارد کنید' }, false);
+                return;
+            }
+
+            const result = await apiCall('/auth/login', {
+                method: 'POST',
+                body: { email, password }
+            });
+
+            if (result.success && result.data.token) {
+                localStorage.setItem('vteemo_token', result.data.token);
+                showResult('authResult', {
+                    message: 'ورود موفق! Token ذخیره شد ✅',
+                    user: result.data.user
+                });
+            } else {
+                showResult('authResult', result, false);
+            }
+        }
+
+        async function testGetProfile() {
+            const result = await apiCall('/auth/me');
+            showResult('authResult', result, result.success);
+        }
+
+        // 3. Videos Tests
+        async function testCreateVideo() {
+            const title = document.getElementById('videoTitle').value;
+            const description = document.getElementById('videoDescription').value;
+            const url = document.getElementById('videoUrl').value;
+
+            if (!title || !description) {
+                showResult('videoResult', { error: 'لطفا عنوان و توضیحات را وارد کنید' }, false);
+                return;
+            }
+
+            const result = await apiCall('/videos', {
+                method: 'POST',
+                body: { title, description, url: url || 'https://example.com/video.mp4' }
+            });
+
+            showResult('videoResult', result, result.success);
+        }
+
+        async function testGetVideos() {
+            const result = await apiCall('/videos');
+            showResult('videoResult', result, result.success);
+        }
+
+        // 4. Token Management
+        function showToken() {
+            const token = localStorage.getItem('vteemo_token');
+            showResult('tokenResult', {
+                token: token || 'هیچ Token-ای ذخیره نشده',
+                exists: !!token
+            });
+        }
+
+        function clearToken() {
+            localStorage.removeItem('vteemo_token');
+            showResult('tokenResult', {
+                message: 'Token پاک شد ✅'
+            });
+        }
+
+        // Initial load
+        window.onload = function() {
+            console.log('VTEEMO Frontend Test Page Loaded');
+            console.log('Backend URL:', BACKEND_BASE);
+            console.log('API Base:', API_BASE);
+        };
+    </script>
+</body>
+</html>

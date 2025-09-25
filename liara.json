@@ -1,0 +1,17 @@
+{
+  "type": "node",
+  "app": "vteemo-backend",
+  "port": 3000,
+  "build": "npm install && npm run build",
+  "start": "npm run start:auto",
+  "healthCheck": "/health",
+  "ignore": [
+    "node_modules",
+    ".git",
+    "logs",
+    "uploads",
+    "Dockerfile",
+    "src",
+    "scripts"
+  ]
+}
